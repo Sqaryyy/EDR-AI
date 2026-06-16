@@ -1,19 +1,22 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from sequences import log_to_sequence, sequence_to_ngrams, SYSCALLS, VOCAB_SIZE
+from sequences import load_vocab, log_to_sequence, sequence_to_ngrams
 from train import SyscallLSTM, N, EMBED_DIM, HIDDEN_DIM
 import sys
 
-# load model
-model = SyscallLSTM(VOCAB_SIZE, EMBED_DIM, HIDDEN_DIM)
+# load vocab and model
+syscall_to_idx, syscalls = load_vocab()
+vocab_size = len(syscalls)
+
+model = SyscallLSTM(vocab_size, EMBED_DIM, HIDDEN_DIM)
 model.load_state_dict(torch.load("model/lstm.pt"))
 model.eval()
 
 def score_sequence(filepath):
-    seq = log_to_sequence(filepath)
+    seq = log_to_sequence(filepath, syscall_to_idx)
     ngrams = sequence_to_ngrams(seq, n=N)
-    
+
     if len(ngrams) == 0:
         print(f"[WARN] {filepath} too short to score")
         return
@@ -31,11 +34,10 @@ def score_sequence(filepath):
 
     avg_loss = np.mean(losses)
     max_loss = np.max(losses)
-    
-    # threshold tuned from normal logs
-    THRESHOLD = 0.55
+
+    THRESHOLD = 0.58
     status = "ANOMALY" if avg_loss > THRESHOLD else "NORMAL"
-    
+
     print(f"[{status}] {filepath}")
     print(f"  avg prediction loss: {avg_loss:.4f}")
     print(f"  max prediction loss: {max_loss:.4f}")

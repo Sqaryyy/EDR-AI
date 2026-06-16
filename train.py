@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-from sequences import load_normal_logs, VOCAB_SIZE
+from sequences import build_and_save_vocab, load_normal_logs
 import os
 
 N = 5
@@ -26,8 +26,13 @@ class SyscallLSTM(nn.Module):
         return out
 
 if __name__ == "__main__":
+    print("Building vocab...")
+    syscall_to_idx, syscalls = build_and_save_vocab()
+    vocab_size = len(syscalls)
+    print(f"Vocab size: {vocab_size}")
+
     print("Loading sequences...")
-    X, Y = load_normal_logs("logs", n=N)
+    X, Y = load_normal_logs("logs", syscall_to_idx, n=N)
 
     X_tensor = torch.tensor(X, dtype=torch.long)
     Y_tensor = torch.tensor(Y, dtype=torch.long)
@@ -35,7 +40,7 @@ if __name__ == "__main__":
     dataset = TensorDataset(X_tensor, Y_tensor)
     loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
 
-    model = SyscallLSTM(VOCAB_SIZE, EMBED_DIM, HIDDEN_DIM)
+    model = SyscallLSTM(vocab_size, EMBED_DIM, HIDDEN_DIM)
     optimizer = torch.optim.Adam(model.parameters(), lr=LR)
     criterion = nn.CrossEntropyLoss()
 
